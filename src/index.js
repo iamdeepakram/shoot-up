@@ -13,13 +13,8 @@ import Phaser from 'expose-loader?Phaser!phaser-ce/build/custom/phaser-split.js'
  * And render a single sprite so we make sure it works.
  */
 
-
-
-
-// var game = new Phaser.Game(375, 812, Phaser.AUTO, '', { preload: preload, create: create, update: update });
-
 // Initialize Phaser
-var game = new Phaser.Game(800, 600, Phaser.AUTO, 'game-container', false, false);
+var game = new Phaser.Game(800, 600, Phaser.AUTO, 'game-container');
 
 // Game start scene
 var GameStart = function(game) {};
@@ -178,6 +173,7 @@ GamePlay.prototype = {
             this.fireBullet();
             this.moveEnemies();
             this.checkCollisions();
+            this.createEnemies();
         }
     },
     moveRocket: function() {
@@ -214,11 +210,11 @@ GamePlay.prototype = {
     createEnemies: function() {
         // Create enemies at random x positions
     
-        var enemy = this.enemies.create(game.rnd.integerInRange(50, game.world.width), -100, 'enemy');
+        var enemy = this.enemies.create(game.rnd.integerInRange(0, game.world.width), -100, 'enemy');
         // enemy.body.velocity.y = game.rnd.integerInRange(50, 150);
         enemy.anchor.setTo(0.5, 0.5);  // Set the anchor for better rotation effects
         enemy.body.velocity.y = game.rnd.integerInRange(50, 150);
-        enemy.body.velocity.x = game.rnd.integerInRange(-50, 50);  // Add a random horizontal velocity
+        // enemy.body.velocity.x = game.rnd.integerInRange(-50, 50);  // Add a random horizontal velocity
         enemy.rotation = game.physics.arcade.angleBetween(enemy, this.rocket);  // Face the rocket initially
 
     },
