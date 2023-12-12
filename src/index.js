@@ -16,6 +16,12 @@ import Phaser from 'expose-loader?Phaser!phaser-ce/build/custom/phaser-split.js'
 // Initialize Phaser
 var game = new Phaser.Game(800, 600, Phaser.AUTO, 'game-container');
 
+// Taking care of transition between state to make game in working state
+game.checkOfGameState = {
+    // Add any data you want to pass to the next state
+    comingFromGameOver: false
+};
+
 // Game start scene
 var GameStart = function(game) {};
 
@@ -51,6 +57,7 @@ GameStart.prototype = {
 
     showInstructions: function() {
       // Transition to the instructions scene
+    //   this.isInstructionWatched = localStorage.getItem('instructionsSeen', true);
       game.state.start('Instructions');
     }
 };
@@ -71,7 +78,7 @@ Instructions.prototype = {
         this.instructionsOverlay.anchor.setTo(0.5);
     
         // Add continue button to hide the instructions
-        this.continueButton = game.add.button(game.world.centerX, game.world.centerY + 200, 'continueButton', this.hideInstructions, this);
+        this.continueButton = game.add.button(game.world.centerX, game.world.centerY + 230, 'continueButton', this.hideInstructions, this);
         this.continueButton.anchor.setTo(0.5);
     },
 
@@ -88,6 +95,7 @@ Instructions.prototype = {
 
 // Game play scene
 var GamePlay = function(game) {
+ 
     this.rocket;
     this.bullets;
     this.enemies;
@@ -106,7 +114,7 @@ GamePlay.prototype = {
     preload: function() {
         // Load assets for the game play scene
         // InstructionScreen.png
-        game.load.image('rocket', './assets/images/rocket.png');
+        game.load.image('rocket', './assets/images/rocket1.png');
         game.load.image('bullet', './assets/images/bullet.png');
         game.load.image('enemy', './assets/images/enemy.png');
         game.load.image('pauseButton', './assets/images/pauseButton.png');
@@ -118,18 +126,22 @@ GamePlay.prototype = {
     create: function() {
         // Initialize game play elements
         // Example: this.player = game.add.sprite(100, 100, 'player');
+        // Enable the Arcade physics system
+        // Access the previous state
 
+        if(game.checkOfGameState.comingFromGameOver){
+            this.gameOver = false;
+        }
           // Initialize game play elements
-          this.rocket = game.add.sprite(game.world.centerX, game.world.height - 50, 'rocket');
+          this.rocket = game.add.sprite(game.world.centerX, game.world.height, 'rocket');
           this.rocket.anchor.setTo(0.5);
-          this.rocket.scale.setTo(0.2);
           this.physics.enable(this.rocket, Phaser.Physics.ARCADE);
           this.rocket.body.collideWorldBounds = true;
+        //   this.rocket.tint = 0xFF0000; 
             // Enable debug mode for physics body
-          this.rocket.body.debug = true;
+        //   this.rocket.body.debug = true;
 
           this.bullets = game.add.group();
-          this.bullets.scale.setTo(0.5);
           this.bullets.enableBody = true;
           this.bullets.physicsBodyType = Phaser.Physics.ARCADE;
           this.bullets.createMultiple(50, 'bullet');
@@ -140,13 +152,12 @@ GamePlay.prototype = {
 
   
           this.enemies = game.add.group();
-          this.enemies.scale.setTo(0.2);
           this.enemies.enableBody = true;
           this.enemies.physicsBodyType = Phaser.Physics.ARCADE;
   
           this.scoreText = game.add.text(20, 20, 'Score: 0', { font: '20px Arial', fill: '#fff' });
   
-          this.pauseButton = game.add.button(game.world.width - 20, 20, 'pauseButton', this.togglePause, this);
+          this.pauseButton = game.add.button(game.world.width - 20, 20, 'pauseButton', this.pauseGame, this);
           this.pauseButton.anchor.setTo(1, 0);
   
           // Pause screen
@@ -154,7 +165,7 @@ GamePlay.prototype = {
           this.pauseScreen.anchor.setTo(0.5);
           this.pauseScreen.visible = false;
   
-          this.resumeButton = game.add.button(game.world.centerX, game.world.centerY - 50, 'resumeButton', this.togglePause, this);
+          this.resumeButton = game.add.button(game.world.centerX, game.world.centerY - 50, 'resumeButton', this.resumeGame, this);
           this.resumeButton.anchor.setTo(0.5);
           this.resumeButton.visible = false;
   
@@ -163,17 +174,24 @@ GamePlay.prototype = {
           this.restartButton.visible = false;
   
           this.createEnemies();
+     
+
+    
     },
 
     update: function() {
         // Update game play logic
+        console.log('here')
+      
+
+        console.log(this.isPaused, this.gameOver);
         if (!this.isPaused  && !this.gameOver) {
+            console.log('not able to come here ')
             // Update game play logic
             this.moveRocket();
             this.fireBullet();
             this.moveEnemies();
             this.checkCollisions();
-            this.createEnemies();
         }
     },
     moveRocket: function() {
@@ -188,37 +206,38 @@ GamePlay.prototype = {
     },
     fireBullet: function() {
         // Fire bullet with the Enter key
-        if (game.input.keyboard.isDown(Phaser.Keyboard.ENTER)) {
+        if (game.input.keyboard.isDown(Phaser.Keyboard.ENTER) || game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
             var bullet = this.bullets.getFirstExists(false);
-
+    
             if (bullet) {
-                bullet.reset(this.rocket.x, this.rocket.y -  this.rocket.height / 2);
+                bullet.reset(this.rocket.x, this.rocket.y - 8); // Adjusted y position
                 bullet.body.velocity.y = -400;
             }
         }
-    },
+    },    
     moveEnemies: function() {
         // Move enemies downward
         this.enemies.y += 1;
 
         // Check if enemies are out of bounds and create new enemies
-        if (this.enemies.y > game.world.height) {
+        if (this.enemies.y +100 > game.world.height) {
             this.enemies.y = -100;
             this.createEnemies();
         }
     },
+
     createEnemies: function() {
         // Create enemies at random x positions
-    
-        var enemy = this.enemies.create(game.rnd.integerInRange(0, game.world.width), -100, 'enemy');
-        // enemy.body.velocity.y = game.rnd.integerInRange(50, 150);
-        enemy.anchor.setTo(0.5, 0.5);  // Set the anchor for better rotation effects
-        enemy.body.velocity.y = game.rnd.integerInRange(50, 150);
-        // enemy.body.velocity.x = game.rnd.integerInRange(-50, 50);  // Add a random horizontal velocity
-        enemy.rotation = game.physics.arcade.angleBetween(enemy, this.rocket);  // Face the rocket initially
-
+        for (var i = 0; i < 5; i++) {
+            var enemy = this.enemies.create(game.rnd.integerInRange(50, game.world.width - 50), -100, 'enemy');
+            enemy.anchor.setTo(0.5, 0.5);
+            // enemy.body.velocity.y = game.rnd.integerInRange(50, 150);
+            enemy.body.velocity.x = game.rnd.integerInRange(-50, 50);
+            enemy.body.velocity.y = game.rnd.integerInRange(50, 150);
+            enemy.rotation = game.physics.arcade.angleBetween(enemy, this.rocket);
+        }
     },
-
+    
     checkCollisions: function() {
         // Check for collisions between bullets and enemies
         game.physics.arcade.overlap(this.bullets, this.enemies, this.enemyHit, null, this);
@@ -235,30 +254,45 @@ GamePlay.prototype = {
         this.score += 10;
         this.scoreText.text = 'Score: ' + this.score;
     },
-    togglePause: function() {
-        // Toggle pause state
-        this.isPaused = !this.isPaused;
 
-        // Show/hide pause screen and buttons
-        this.pauseScreen.visible = this.isPaused;
-        this.resumeButton.visible = this.isPaused;
-        this.restartButton.visible = this.isPaused;
+    pauseGame: function() {
+        if (!this.isPaused && this.pauseButtonClickable) {
+            this.isPaused = true;
 
-        // Enable/disable pause button based on game pause state
-        this.pauseButtonClickable = !this.isPaused;
+            // Show/hide pause screen and buttons
+            this.pauseScreen.visible = true;
+            this.resumeButton.visible = true;
+            this.restartButton.visible = true;
 
-        // Enable/disable input on the pause button
-        this.pauseButton.inputEnabled = this.pauseButtonClickable;
+            // Disable input on the pause button
+            this.pauseButton.inputEnabled = false;
 
-        if (this.isPaused) {
+            // Pause the physics engine
             game.physics.arcade.isPaused = true;
-        } else {
+        }
+    },
+
+    resumeGame: function() {
+        if (this.isPaused) {
+            this.isPaused = false;
+
+            // Show/hide pause screen and buttons
+            this.pauseScreen.visible = false;
+            this.resumeButton.visible = false;
+            this.restartButton.visible = false;
+
+            // Enable input on the pause button
+            this.pauseButton.inputEnabled = true;
+
+            // Resume the physics engine
             game.physics.arcade.isPaused = false;
         }
     },
 
+    
     restartGame: function() {
         // Restart the game
+        console.log('restart clicked')
         this.isPaused = false;
         game.physics.arcade.isPaused = false;
         game.state.start('GamePlay');
@@ -310,8 +344,18 @@ GameOver.prototype = {
 
 
     restartGame: function() {
-        // Transition to the game start scene
-        game.state.start('GameStart');
+            // Transition to the game start scene
+            
+            game.state.start('GamePlay');
+
+          // Reset the game state
+          game.state.states.GamePlay.score = 0;
+          game.checkOfGameState.comingFromGameOver = true;
+  
+          // Re-enable the physics system
+          game.physics.arcade.isPaused = false;
+        //   game.physics.arcade.resume();
+  
     }
 };
 
